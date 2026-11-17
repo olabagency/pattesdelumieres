@@ -24,6 +24,9 @@
   .card label{display:block;font-weight:700;margin:10px 0 6px}
   .card input[type=text]{font:inherit;font-size:18px;padding:8px 12px;border-radius:10px;border:2px solid #d9cdb8;width:220px;text-align:center}
   #colors{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+  #breeds{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:8px}
+  .brd{padding:8px 12px;border-radius:12px;border:3px solid transparent;background:#f4ead8;font-weight:800;font-size:13px;cursor:pointer;color:#2b2420}
+  .brd.on{border-color:#f0a33a;background:#ffe9c2}
   .sw{width:38px;height:38px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 2px #d9cdb8;cursor:pointer}
   .sw.on{box-shadow:0 0 0 3px #2b2420}
   .diffb{display:inline-block;background:#f4ead8;border-radius:12px;padding:8px 14px;margin:2px 4px;cursor:pointer;font-weight:700;font-size:14px;border:3px solid transparent}
@@ -366,6 +369,8 @@
     <div id="newForm" hidden>
       <label>Nom de ton chien</label>
       <input type="text" id="nameIn" maxlength="12" value="Biscuit">
+      <label>Race</label>
+      <div id="breeds"></div>
       <label>Pelage</label>
       <div id="colors"></div>
       <label>Difficulté</label>
@@ -742,6 +747,11 @@ function pointNear(o, rmin, rmax){
 
 // ---------- état du jeu ----------
 const COLORS = [['Caramel', '#c98a4b'], ['Noir', '#2e2a28'], ['Blanc', '#f2efe8'], ['Gris', '#8d8f96'], ['Roux', '#b5562b'], ['Crème', '#e6c995']];
+const BREEDS = [
+  { id: 'mixte', name: 'Bâtard', icon: '🐕', colors: COLORS },
+  { id: 'golden', name: 'Golden Retriever', icon: '🦮', colors: [['Doré', '#dba54c'], ['Crème', '#ecd7a6'], ['Roux', '#b45a24']] },
+  { id: 'caniche', name: 'Caniche', icon: '🐩', colors: [['Abricot', '#e0a56a'], ['Blanc', '#f4efe6'], ['Noir', '#2b2724'], ['Gris argent', '#8d9096'], ['Chocolat', '#5e3c28']] }
+];
 const STATS = [['faim', '🍖 Ventre', '#e07a3f'], ['soif', '💧 Soif', '#3fa7e0'], ['energie', '⚡ Énergie', '#f2c230'], ['joie', '💛 Joie', '#e05a8a'], ['proprete', '🛁 Propreté', '#5cc0a8']];
 const POOL = [
   { k: 'squirrel', n: 2, t: 'Attrape {n} écureuils', s: 1 }, { k: 'fetch', n: 3, t: 'Rapporte la balle {n} fois', s: 1 },
@@ -1093,7 +1103,7 @@ const STORY = [
 
 let CH = null, dlg = null, showS = null, showMode = 'show';
 
-let G = null, paused = true, chosenColor = COLORS[0][1], chosenDiff = 'aventure';
+let G = null, paused = true, chosenColor = COLORS[0][1], chosenBreed = 'mixte', chosenDiff = 'aventure';
 const DF = () => !!G && G.diff === 'aventure';
 const isNight = () => { const h = G.time / 60; return h >= 21 || h < 6; };
 
@@ -1130,7 +1140,7 @@ function withDefaults(g){
   g.tricksN = g.tricksN || 0; g.hunts = g.hunts || { done: 0 }; g.hunt = (g.hunt === 0 || g.hunt) ? g.hunt : null;
   g.relics = g.relics || []; g.ach = g.ach || []; g.wx = g.wx || { rain: false, left: 0, wet: 0 };
   g.quests = g.quests || []; g.bones = g.bones || 0;
-  g.c3 = g.c3 || {}; g.rec = g.rec || {}; g.diff = g.diff || 'tranquille'; g.favors = g.favors || {}; g.notes = g.notes || []; g.bond = g.bond || {}; g.lien = !!g.lien;
+  g.c3 = g.c3 || {}; g.rec = g.rec || {}; g.diff = g.diff || 'tranquille'; g.favors = g.favors || {}; g.notes = g.notes || []; g.bond = g.bond || {}; g.breed = g.breed || 'mixte'; g.lien = !!g.lien;
   if (!g.storyV) {
     const m = { 9: 13, 10: 14, 11: 15 };
     if (m[g.story.step] !== undefined) g.story.step = m[g.story.step];
@@ -1140,8 +1150,8 @@ function withDefaults(g){
   }
   return g;
 }
-function newGame(name, color, diff){
-  G = withDefaults({ name, color, diff, stats: { faim: 65, soif: 60, energie: 85, joie: 70, proprete: 90 }, level: 1, xp: 0, coins: 10, bones: 0,
+function newGame(name, color, diff, breed){
+  G = withDefaults({ name, color, diff, breed: breed || 'mixte', stats: { faim: 65, soif: 60, energie: 85, joie: 70, proprete: 90 }, level: 1, xp: 0, coins: 10, bones: 0,
         time: 8 * 60, day: 1, counters: {}, quests: [], storyV: 2 });
   for (let i = 0; i < 3; i++) G.quests.push(newQuest());
 }
@@ -2269,7 +2279,7 @@ function introCine(done){
   });
 }
 
-const GAME_VERSION = '1.1';
+const GAME_VERSION = '1.2';
 $('#aboutVer').textContent = GAME_VERSION; { const lv = document.getElementById('ldVer'); if (lv) lv.textContent = GAME_VERSION; }
 $('#aboutBtn').onclick = () => { $('#about').hidden = false; $('#about .card').scrollTop = 0; };
 $('#aboutClose').onclick = () => { $('#about').hidden = true; };
@@ -2354,7 +2364,7 @@ const TIPS = [
   `Il pleut ? Achète l'imperméable à la boutique pour rester propre.`,
   `Les événements aléatoires sont de courtes occasions de gagner des pièces : saisis-les !`,
   `Maintenir Maj te fait courir, mais vide l'énergie plus vite.`,
-  `Tu peux changer le pelage de ton chien à chaque nouvelle partie.`
+  `Bâtard, Golden Retriever ou Caniche : choisis la race et le pelage de ton chien à chaque nouvelle partie.`
 ];
 let shadowsOn = true; try { shadowsOn = (localStorage.getItem('vdt-shadows') ?? '1') === '1'; } catch (e) {}
 function applyShadows(){
@@ -2482,11 +2492,22 @@ function closeHelp(){
 }
 
 // ---------- menu principal : emplacements ----------
-COLORS.forEach(([n, c], i) => {
-  const s = document.createElement('div'); s.className = 'sw' + (i ? '' : ' on'); s.style.background = c; s.title = n;
-  s.onclick = () => { chosenColor = c; document.querySelectorAll('.sw').forEach(x => x.classList.remove('on')); s.classList.add('on'); };
-  $('#colors').appendChild(s);
+function renderSwatches(){
+  const box = $('#colors'); box.innerHTML = '';
+  const br = BREEDS.find(b => b.id === chosenBreed);
+  if (!br.colors.some(c => c[1] === chosenColor)) chosenColor = br.colors[0][1];
+  br.colors.forEach(([n, c]) => {
+    const e = document.createElement('div'); e.className = 'sw' + (c === chosenColor ? ' on' : ''); e.style.background = c; e.title = n;
+    e.onclick = () => { chosenColor = c; document.querySelectorAll('.sw').forEach(x => x.classList.remove('on')); e.classList.add('on'); };
+    box.appendChild(e);
+  });
+}
+BREEDS.forEach(b => {
+  const e = document.createElement('div'); e.className = 'brd' + (b.id === chosenBreed ? ' on' : ''); e.textContent = b.icon + ' ' + b.name;
+  e.onclick = () => { chosenBreed = b.id; document.querySelectorAll('.brd').forEach(x => x.classList.remove('on')); e.classList.add('on'); renderSwatches(); };
+  $('#breeds').appendChild(e);
 });
+renderSwatches();
 document.querySelectorAll('.diffb').forEach(b => {
   b.onclick = () => { chosenDiff = b.dataset.d; document.querySelectorAll('.diffb').forEach(x => x.classList.remove('on')); b.classList.add('on'); };
 });
@@ -2516,14 +2537,14 @@ function renderSlots(){
 $('#backBtn').onclick = () => { $('#newForm').hidden = true; $('#slotsBox').hidden = false; };
 $('#startBtn').onclick = () => {
   currentSlot = pendingSlot;
-  newGame(($('#nameIn').value.trim() || 'Biscuit').slice(0, 12), chosenColor, chosenDiff);
+  newGame(($('#nameIn').value.trim() || 'Biscuit').slice(0, 12), chosenColor, chosenDiff, chosenBreed);
   save(); startPlaying(true);
 };
 function startPlaying(fresh){
   $('#menu').hidden = true; $('#hud').hidden = false; paused = false;
   buildHUD(); initWorld(); setupStep(); restoreZone(); resetEvents();
   if (!shadowsOn) applyShadows();
-  setDogColor(dogM, G.color); camFocus.set(dog.x, 34, dog.y); camS.yaw = 0; camS.pitch = .5;
+  useBreed(G.breed); setDogColor(dogM, G.color); camFocus.set(dog.x, 34, dog.y); camS.yaw = 0; camS.pitch = .5;
   refreshPauseBtns();
   { const h = $('#hud'); h.classList.remove('enter'); void h.offsetWidth; h.classList.add('enter'); }
   if (fresh) {
@@ -3883,7 +3904,8 @@ const rain = (() => { const g = new THREE.BufferGeometry(); g.setAttribute('posi
 
 // ---------- modèles : chien ----------
 const MUD = new THREE.Color('#6b4a2b'), _tc = new THREE.Color();
-function makeDog(color, withAcc){
+function makeDog(color, withAcc, breed, furN){
+  if (breed === 'golden' || breed === 'caniche') return makeBreedDog(color, withAcc, breed, furN || FUR_N);
   const root = new THREE.Group(), body = new THREE.Group(), inner = new THREE.Group();
   body.position.y = 27; inner.position.y = -27; root.add(body); body.add(inner);
   const base = new THREE.Color(color);
@@ -3910,7 +3932,11 @@ function makeDog(color, withAcc){
   const tail = new THREE.Group(); tail.position.set(-22, 30, 0);
   const tm = M3(new THREE.CapsuleGeometry(2.8, 13, 3, 6), mats.mc); tm.rotation.z = .85; tm.position.set(-5.5, 6, 0); tail.add(tm); inner.add(tail);
   const dm = { root, body, inner, head, legs, tail, tongue, mats, base, acc: {} };
-  if (withAcc) {
+  if (withAcc) addDogAcc(dm);
+  return dm;
+}
+function addDogAcc(dm){
+  const { inner, head } = dm;
     const A = dm.acc, gold = mat(0xf2c230, { emissive: 0x6a4a00 }), blk = mat(0x161616);
     const collar = new THREE.Group(); collar.position.set(21, 32, 0); collar.rotation.z = -.35;
     const ring = M3(new THREE.TorusGeometry(8.6, 1.7, 6, 16), mat(0xd23b3b), false); ring.rotation.y = Math.PI / 2; collar.add(ring);
@@ -3933,12 +3959,150 @@ function makeDog(color, withAcc){
     const rb = M3(new THREE.CapsuleGeometry(11, 15, 4, 12), yel); rb.rotation.z = Math.PI / 2; rb.scale.set(1.08, 1, .98); rb.position.set(-6, 28, 0); rc.add(rb);
     const hood = SPH(9.5, yel); hood.scale.set(.9, .9, 1.05); hood.position.set(12, 36, 0); rc.add(hood); inner.add(rc); A.raincoat = rc;
     for (const k in A) A[k].visible = false;
+}
+// ---------- pelage réaliste : coques de poils (fur shells) ----------
+const FURT = { value: 0 }, FUR_N = (navigator.hardwareConcurrency || 4) >= 6 ? 10 : 6;
+const _furBase = {}, _furTex = {};
+function _lcg(s){ return () => (s = (s * 1664525 + 1013904223) >>> 0) / 4294967296; }
+function furTexture(kind, rep){
+  const key = kind + rep[0] + '_' + rep[1];
+  if (_furTex[key]) return _furTex[key];
+  if (!_furBase[kind]) {
+    const N = 128, hg = new Float32Array(N * N), rnd = _lcg(kind === 'curl' ? 91 : 17), d = new Uint8Array(N * N * 4);
+    if (kind === 'curl') {
+      for (let b = 0; b < 110; b++) {
+        const cx = Math.floor(rnd() * N), cy = Math.floor(rnd() * N), r = 6 + rnd() * 5, ph = .72 + rnd() * .28, R = Math.ceil(r);
+        for (let dy = -R; dy <= R; dy++) for (let dx = -R; dx <= R; dx++) {
+          const q = (dx * dx + dy * dy) / (r * r); if (q >= 1) continue;
+          const i = ((cy + dy + N) % N) * N + ((cx + dx + N) % N), h = ph * Math.sqrt(1 - q);
+          if (h > hg[i]) hg[i] = h;
+        }
+      }
+      for (let i = 0; i < N * N; i++) hg[i] = Math.min(1, Math.max(hg[i], .25 + rnd() * .1) * (.93 + rnd() * .07));
+    } else {
+      const M = N / 4, g = new Float32Array(N * M); for (let i = 0; i < g.length; i++) g[i] = rnd();
+      for (let y = 0; y < N; y++) { const fy = y / 4, i0 = Math.floor(fy), t = fy - i0;
+        for (let x = 0; x < N; x++) hg[y * N + x] = g[(i0 % M) * N + x] * (1 - t) + g[((i0 + 1) % M) * N + x] * t; }
+      const c = hg.slice(); for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) hg[y * N + x] = c[y * N + x] * .6 + (c[y * N + (x + 1) % N] + c[y * N + (x + N - 1) % N]) * .2;
+    }
+    for (let i = 0; i < N * N; i++) { const s = Math.round(255 * ((kind === 'curl' ? .74 : .8) + (kind === 'curl' ? .26 : .2) * hg[i])); d[i * 4] = d[i * 4 + 1] = d[i * 4 + 2] = s; d[i * 4 + 3] = Math.round(255 * hg[i]); }
+    const t = new THREE.DataTexture(d, N, N, THREE.RGBAFormat); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.minFilter = t.magFilter = THREE.LinearFilter; t.generateMipmaps = false; t.needsUpdate = true;
+    _furBase[kind] = t;
+  }
+  const t = _furBase[kind].clone(); t.repeat.set(rep[0], rep[1]); t.needsUpdate = true; return (_furTex[key] = t);
+}
+function furify(dm, mesh, o){
+  const n = Math.max(2, o.n || dm.N), tex = furTexture(o.kind, o.rep);
+  for (let i = 1; i <= n; i++) {
+    const f = i / n, key = [o.kind, o.rep, o.tone, n, o.len, i, o.r0, o.r1].join('|');
+    let m = dm._fm[key];
+    if (!m) {
+      m = new THREE.MeshLambertMaterial({ color: 0xffffff, map: tex, alphaTest: o.kind === 'curl' ? .1 + .72 * f : .06 + .8 * Math.pow(f, .85) });
+      const off = o.len * f;
+      m.onBeforeCompile = sh => {
+        sh.uniforms.furOff = { value: off }; sh.uniforms.furT = FURT;
+        sh.vertexShader = 'uniform float furOff;\nuniform float furT;\n' + sh.vertexShader.replace('#include <begin_vertex>',
+          '#include <begin_vertex>\n transformed += normalize(normal) * furOff;\n transformed.x += sin(furT * 2.1 + position.y * .45) * furOff * .07;\n transformed.z += cos(furT * 1.7 + position.x * .45) * furOff * .07;');
+      };
+      m.customProgramCacheKey = () => 'fur' + f;
+      dm.fur.push({ m, tone: o.tone, k: o.r0 + (o.r1 - o.r0) * f }); dm._fm[key] = m;
+    }
+    const s = new THREE.Mesh(mesh.geometry, m); s.castShadow = false; s.receiveShadow = false; mesh.add(s);
+  }
+}
+const MNOSE = new THREE.MeshPhongMaterial({ color: 0x120e0e, shininess: 90, specular: 0x777777 });
+const MIRB = new THREE.MeshPhongMaterial({ color: 0x3a2210, shininess: 100, specular: 0xffffff });
+const MIRD = new THREE.MeshPhongMaterial({ color: 0x140c07, shininess: 100, specular: 0xffffff });
+
+function ellG(rx, ry, rz){
+  const g = new THREE.SphereGeometry(1, 28, 18), p = g.attributes.position, n = g.attributes.normal, v = new THREE.Vector3();
+  for (let i = 0; i < p.count; i++) { p.setXYZ(i, p.getX(i) * rx, p.getY(i) * ry, p.getZ(i) * rz); v.set(n.getX(i) / rx, n.getY(i) / ry, n.getZ(i) / rz).normalize(); n.setXYZ(i, v.x, v.y, v.z); }
+  return g;
+}
+function makeBreedDog(color, withAcc, breed, N){
+  const root = new THREE.Group(), body = new THREE.Group(), inner = new THREE.Group();
+  body.position.y = 27; inner.position.y = -27; root.add(body); body.add(inner);
+  const base = new THREE.Color(color), gold = breed === 'golden';
+  const mats = { mc: mat(base.clone()), dk: mat(base.clone().multiplyScalar(.72)), lt: mat(base.clone().multiplyScalar(1.15)) };
+  const dm = { root, body, inner, mats, base, acc: {}, fur: [], _fm: {}, N, breed, tm: { dk: gold ? .76 : .84, lt: gold ? 1.22 : 1.1 } };
+  const F = (mesh, o) => furify(dm, mesh, o), h2 = Math.max(2, Math.ceil(N / 2));
+  const S = (kind, len, rep, tone, r0, r1, n) => ({ kind, len, rep, tone, r0: r0 ?? .85, r1: r1 ?? 1.1, n });
+  const head = new THREE.Group(); head.position.set(27, 40, 0); inner.add(head);
+  const addM = (g, geo, m, x, y, z, sx = 1, sy = 1, sz = 1, shadow = true) => { const o = M3(geo, m, shadow); o.position.set(x, y, z); o.scale.set(sx, sy, sz); g.add(o); return o; };
+  const sph = (r, ws = 14, hs = 10) => new THREE.SphereGeometry(r, ws, hs);
+  if (gold) {
+    const torso = M3(ellG(9.4, 22.9, 9.4), mats.dk); torso.rotation.z = Math.PI / 2; torso.scale.set(1.05, 1, .92); torso.position.set(0, 27, 0); inner.add(torso); F(torso, S('str', 1.8, [2.6, 2.4], 'mc'));
+    const chest = addM(inner, sph(9.6), mats.dk, 11.5, 25, 0, 1, 1.05, .95); F(chest, S('str', 2.4, [2.2, 1.6], 'lt', .85, 1.1));
+    const neck = addM(inner, sph(8.6), mats.dk, 19, 35, 0, 1.1, 1.1, .95); F(neck, S('str', 2, [2, 1.4], 'mc'));
+    for (const s of [-1, 1]) { const hh = addM(inner, sph(7.4), mats.dk, -14, 25.5, s * 7, 1.15, 1.2, .8); F(hh, S('str', 2, [1.8, 1.8], 'mc')); }
+    const sk = addM(head, sph(9.6), mats.dk, 0, 0, 0, 1, .97, 1); F(sk, S('str', 1, [2.6, 1.4], 'mc'));
+    const mz = M3(ellG(4.6, 8.6, 4.6), mats.dk); mz.rotation.z = Math.PI / 2; mz.position.set(12, -3.2, 0); mz.scale.set(.95, 1, 1.08); head.add(mz); F(mz, S('str', .8, [.8, .8], 'lt', .85, 1.1, 3));
+    for (const s of [-1, 1]) {
+      addM(head, sph(3.6, 10, 8), mats.lt, 8.5, -5, s * 4.6, 1, 1, 1, false);
+      addM(head, sph(2.1, 12, 10), MIRB, 9.6, 3.8, s * 6.2, .6, 1, 1, false);
+      addM(head, sph(1, 8, 6), bas(0x050505), 10.4, 3.9, s * 6.1, .5, 1, 1, false);
+      addM(head, sph(.55, 6, 4), bas(0xffffff), 10.9, 4.8, s * 5.7, 1, 1, 1, false);
+      addM(head, sph(1.8, 8, 6), mats.mc, 8.8, 6.4, s * 6.2, 1.3, .5, 1.3, false);
+      const e = addM(head, sph(5.2, 12, 10), mats.dk, -1.5, -1.5, s * 9.6, .42, 1.55, .95); e.rotation.x = s * .28; e.rotation.z = .1; F(e, S('str', 1.8, [1.2, 1], 'mc', .8, 1.05));
+    }
+    addM(head, sph(2.6, 12, 10), MNOSE, 18.7, -.6, 0, .8, .7, 1.1, false);
+  } else {
+    const torso = M3(ellG(7.6, 17.6, 7.6), mats.dk); torso.rotation.z = Math.PI / 2; torso.scale.set(1.05, 1, .9); torso.position.set(0, 27, 0); inner.add(torso); F(torso, S('curl', 1.6, [1.4, 1.3], 'mc', .8));
+    const mane = addM(inner, sph(8.6), mats.dk, 9.5, 28.5, 0, 1.05, 1.05, .95); F(mane, S('curl', 4.2, [1.4, 1], 'mc', .8));
+    for (const s of [-1, 1]) { const r = addM(inner, sph(5.8), mats.dk, -11.5, 28, s * 5.2); F(r, S('curl', 3.4, [1, 1], 'mc', .8)); }
+    const neck = M3(ellG(4.6, 9.2, 4.6), mats.dk); neck.rotation.z = -.9; neck.position.set(19.5, 34, 0); inner.add(neck); F(neck, S('curl', 2.2, [1, 1], 'mc', .8));
+    const nr = addM(inner, sph(6.4), mats.dk, 20.5, 35.5, 0); F(nr, S('curl', 3.5, [1.2, .9], 'mc', .8));
+    const sk = addM(head, sph(8.4), mats.dk, 0, 0, 0, 1.05, 1, .92); F(sk, S('curl', 1, [1.2, .6], 'mc', .8));
+    const top = addM(head, sph(8.2), mats.dk, -1.5, 8, 0, 1, .9, 1); F(top, S('curl', 4.2, [1.2, .8], 'mc', .8));
+    const mz = M3(ellG(3.1, 8.6, 3.1), mats.dk); mz.rotation.z = Math.PI / 2; mz.position.set(13, -3, 0); head.add(mz); F(mz, S('str', .5, [.8, .8], 'lt', .85, 1.1, 3));
+    for (const s of [-1, 1]) {
+      addM(head, sph(1.9, 12, 10), MIRD, 8.8, 2.6, s * 4.8, .8, 1, 1, false);
+      addM(head, sph(.5, 6, 4), bas(0xffffff), 10.5, 3.5, s * 4.5, 1, 1, 1, false);
+      const mu = addM(head, sph(2.7), mats.dk, 11.5, -4.2, s * 3.6, 1, 1, 1, false); F(mu, S('curl', 1.8, [.5, .5], 'lt', .8, 1, 3));
+      const e = addM(head, sph(4.8, 12, 10), mats.dk, -1.5, -2.5, s * 8.2, .5, 1.9, 1); e.rotation.x = s * .2; F(e, S('curl', 3.6, [.7, .6], 'mc', .8));
+    }
+    addM(head, sph(2.2, 12, 10), MNOSE, 21.2, -.8, 0, .85, .7, 1.1, false);
+  }
+  const tongue = addM(head, sph(2.2, 10, 8), mat(0xe8657a), 12.5, -7.8, 0, 1.5, .35, 1.1, false);
+  const legs = [], lxF = gold ? 13 : 11, lz = gold ? 6.4 : 5.6;
+  for (const [lx, z] of [[lxF, lz], [lxF, -lz], [-lxF, lz], [-lxF, -lz]]) {
+    const p = new THREE.Group(); p.position.set(lx, 21, z);
+    const l = CYL(gold ? 3.5 : 2.4, gold ? 2.9 : 1.9, 20, mats.dk, 10); l.position.y = -10; p.add(l);
+    if (gold) {
+      F(l, S('str', 1.3, [1, .9], 'mc', .85, 1.1, h2));
+      const f = addM(p, sph(2.6, 8, 6), mats.lt, lx > 0 ? -2.8 : -2.4, lx > 0 ? -6.5 : -5, 0, .6, 2.3, .8, false); F(f, S('str', 1.4, [.4, .4], 'lt', .8, 1.1, 3));
+    } else {
+      F(l, S('str', .9, [.4, .4], 'mc', .8, 1.05, h2));
+      const pom = addM(p, sph(3.6, 10, 8), mats.dk, 0, -12.2, 0, 1, .8, 1, false); F(pom, S('curl', 3, [.6, .5], 'mc', .8, 1.05, h2));
+    }
+    addM(p, sph(gold ? 3.9 : 3.1, 8, 6), mats.lt, 1.2, -19.3, 0, 1.25, .7, 1, false);
+    inner.add(p); legs.push(p);
+  }
+  const tail = new THREE.Group(); tail.position.set(gold ? -22 : -18, gold ? 30 : 29, 0); inner.add(tail);
+  if (gold) {
+    const tm = M3(ellG(2.9, 10.4, 2.9), mats.dk); tm.rotation.z = .85; tm.position.set(-5.5, 6, 0); tail.add(tm); F(tm, S('str', 2.2, [1, 1.5], 'mc', .85, 1.1));
+    for (const s of [-1, 1]) { const f = addM(tm, sph(3, 8, 6), mats.lt, s * 2.8, -1, 0, .8, 2.6, .8, false); F(f, S('str', 1.4, [.4, .4], 'lt', .8, 1.1, 3)); }
+    const cf = addM(inner, sph(3.2, 8, 6), mats.lt, 14, 16, 0, .8, 1.8, .9, false); F(cf, S('str', 1.6, [.4, .4], 'lt', .8, 1.1, 3));
+  } else {
+    const tm = M3(ellG(1.4, 5.4, 1.4), mats.dk); tm.rotation.z = .85; tm.position.set(-3.8, 4.6, 0); tail.add(tm); F(tm, S('str', .8, [.3, .4], 'mc', .8, 1.05, 3));
+    const pm = addM(tm, sph(4.2), mats.dk, 0, 7.5, 0); F(pm, S('curl', 3, [.7, .6], 'mc', .8));
+  }
+  Object.assign(dm, { head, legs, tail, tongue });
+  if (withAcc) {
+    addDogAcc(dm);
+    const A = dm.acc;
+    if (gold) { for (const k of ['collar', 'bow', 'bandana']) A[k].scale.setScalar(1.3); A.raincoat.scale.setScalar(1.14); A.glasses.position.x += 1.4; A.pirate.position.y += 1.5; A.crown.position.y += 1.5; }
+    else { for (const k of ['collar', 'bow', 'bandana']) A[k].scale.setScalar(1.15); A.glasses.position.set(10.2, 2.8, 0); A.pirate.position.y += 6.5; A.crown.position.y += 6.5; }
   }
   return dm;
 }
+
 function applyDogColor(dm, dirt){
   _tc.copy(dm.base).lerp(MUD, dirt * .65);
-  dm.mats.mc.color.copy(_tc); dm.mats.dk.color.copy(_tc).multiplyScalar(.68); dm.mats.lt.color.copy(_tc).multiplyScalar(1.15);
+  const hx = _tc.getHex(); if (dm._hx === hx) return; dm._hx = hx;
+  const tm = dm.tm || { dk: .68, lt: 1.15 };
+  dm.mats.mc.color.copy(_tc); dm.mats.dk.color.copy(_tc).multiplyScalar(tm.dk); dm.mats.lt.color.copy(_tc).multiplyScalar(tm.lt);
+  if (dm.fur) for (const f of dm.fur) f.m.color.copy(f.tone === 'lt' ? dm.mats.lt.color : dm.mats.mc.color).multiplyScalar(f.k);
 }
 function setDogColor(dm, color){ dm.base.set(color); applyDogColor(dm, 0); }
 function setAcc(dm, eq){
@@ -4052,8 +4216,8 @@ function syncFair(dt, t){
   if (brutus.active) poseDog(brutusM, brutus, t, { happy: false, running: false, swim: false, sleeping: false });
   zoraM.root.visible = zora.active;
   if (zora.active) { if (dist(zora, dog) < 320) faceTo(zora, dog, dt, 5); poseHuman(zoraM, zora, t, false); }
-  standM.root.visible = !!ctl;
-  if (ctl) { if (standM._col !== G.color) { standM.base.set(G.color); standM._col = G.color; applyDogColor(standM, 0); setAcc(standM, G.eq); }
+  for (const k in standMs) standMs[k].root.visible = false;
+  if (ctl) { standM = standFor(G.breed || 'mixte'); standM.root.visible = true; if (standM._col !== G.color) { standM.base.set(G.color); standM._col = G.color; applyDogColor(standM, 0); setAcc(standM, G.eq); }
     poseDog(standM, { x: ctl.main.x, y: ctl.main.y, hd: ctl.main.hd, anim: 0, moving: false }, t, { sleeping: true }); }
   deedCarryM.visible = dog.carry === 'deed';
   if (deedCarryM.visible) { const f = fwd(dog, 30 * (dog.scale || 1)); deedCarryM.position.set(f.x, 22, f.y); deedCarryM.rotation.y = -(dog.hd || 0); }
@@ -4079,7 +4243,10 @@ function renderMiniFair(){
 }
 
 // ---------- instanciation des personnages ----------
-const dogM = makeDog(COLORS[0][1], true); scene.add(dogM.root);
+const dogMs = { mixte: makeDog(COLORS[0][1], true), golden: makeDog(BREEDS[1].colors[0][1], true, 'golden'), caniche: makeDog(BREEDS[2].colors[0][1], true, 'caniche') };
+for (const k in dogMs) { scene.add(dogMs[k].root); dogMs[k].root.visible = k === 'mixte'; }
+let dogM = dogMs.mixte;
+function useBreed(b){ b = dogMs[b] ? b : 'mixte'; if (dogM === dogMs[b]) return; for (const k in dogMs) dogMs[k].root.visible = k === b; dogM = dogMs[b]; }
 const npcM = npcs.map(n => { const m = makeDog(n.color, false); scene.add(m.root); return m; });
 const ownerM = makeHuman(0x4a9c7a, 0x6b3a1e, false); scene.add(ownerM.root);
 const mayorM = makeHuman(0x3a3f8f, 0xcfcfcf, true); scene.add(mayorM.root);
@@ -4101,7 +4268,9 @@ const pepM = makeDog(pep.color, false), grosM = makeDog(gros.color, false), brut
 const zoraM = makeHuman(0x7a3a9a, 0x1a1a22, false);
 { const sc = M3(new THREE.TorusGeometry(10.8, 2.4, 6, 14), mat(0xe0b040), false); sc.rotation.x = Math.PI / 2; sc.position.set(0, 78, 0); zoraM.root.add(sc); }
 scene.add(zoraM.root);
-const standM = makeDog(COLORS[0][1], true); scene.add(standM.root); standM.root.visible = false;
+const standMs = { mixte: makeDog(COLORS[0][1], true) }; scene.add(standMs.mixte.root); standMs.mixte.root.visible = false;
+let standM = standMs.mixte;
+function standFor(b){ if (!standMs[b]) { const m = makeDog(G.color, true, b, 4); scene.add(m.root); m.root.visible = false; standMs[b] = m; } return standMs[b]; }
 function makeDeedBox(){ const g = new THREE.Group(); g.add(M3(new THREE.BoxGeometry(16, 9, 11), mat(0x6a6e78))); g.add(at(BOX(4, 4, 12, mat(0xe0b040), false), 0, 0, 0)); return g; }
 const deedCarryM = makeDeedBox(); scene.add(deedCarryM); deedCarryM.visible = false;
 const deedRenardM = makeDeedBox(); deedRenardM.position.set(14, 38, 0); renardM.root.add(deedRenardM); deedRenardM.visible = false;
@@ -4276,6 +4445,7 @@ const fwd = (e, d) => ({ x: e.x + Math.cos(e.hd) * d, y: e.y + Math.sin(e.hd) * 
 function syncEntities(dt, t){
   const st = G.stats, eq = G.eq;
   // joueur
+  FURT.value = t; useBreed(ctl ? 'mixte' : G.breed);
   setAcc(dogM, ctl ? {} : eq);
   { const want = ctl ? ctl.e.color : G.color; if (dogM._col !== want) { dogM.base.set(want); dogM._col = want; } }
   const dirt = ctl ? 0 : clamp((45 - st.proprete) / 35, 0, 1); applyDogColor(dogM, dirt);
@@ -4476,7 +4646,7 @@ const titleDog = { x: 640, y: 760, hd: 0, anim: 0, moving: true, bounce: 0 };
 function renderTitle(dt, t){
   titleDog.anim += dt; const a = t * .5;
   titleDog.x = 700 + Math.cos(a) * 160; titleDog.y = 760 + Math.sin(a) * 160; titleDog.hd = a + Math.PI / 2;
-  setDogColor(dogM, chosenColor); setAcc(dogM, {});
+  useBreed(chosenBreed); setDogColor(dogM, chosenColor); setAcc(dogM, {});
   poseDog(dogM, titleDog, t, { happy: true, running: true });
   ownerM.root.position.set(900, 0, 820); ownerM.root.rotation.y = -2.6; poseHuman(ownerM, { x: 900, y: 820, hd: 2.6, moving: false, anim: 0 }, t, false);
   const ca = t * .12;
