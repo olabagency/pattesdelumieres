@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256"><defs>
+<linearGradient id="gold" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe27a"/><stop offset="1" stop-color="#ff9a3d"/></linearGradient>
+<radialGradient id="glow"><stop offset="0" stop-color="#fffbe0" stop-opacity=".95"/><stop offset=".35" stop-color="#fff0a0" stop-opacity=".55"/><stop offset="1" stop-color="#ffd23f" stop-opacity="0"/></radialGradient>
+<linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3d74ad"/><stop offset=".6" stop-color="#16284a"/><stop offset="1" stop-color="#0b1226"/></linearGradient>
+</defs><rect width="256" height="256" rx="58" fill="url(#bg)"/><g opacity=".8"><circle cx="40" cy="34" r="1.6" fill="#fff"/><circle cx="206" cy="28" r="2" fill="#fff"/><circle cx="226" cy="70" r="1.3" fill="#fff"/><circle cx="24" cy="92" r="1.4" fill="#fff"/><circle cx="180" cy="16" r="1.2" fill="#fff"/></g><g transform="translate(17.92 21.92) scale(0.86)">
+  <ellipse cx="52" cy="112" rx="19" ry="27" transform="rotate(-24 52 112)" fill="url(#gold)"/><ellipse cx="97" cy="66" rx="21" ry="30" transform="rotate(-8 97 66)" fill="url(#gold)"/><ellipse cx="159" cy="66" rx="21" ry="30" transform="rotate(8 159 66)" fill="url(#gold)"/><ellipse cx="204" cy="112" rx="19" ry="27" transform="rotate(24 204 112)" fill="url(#gold)"/>
+  <path d="M128 100C170 100 198 138 198 172C198 201 170 216 128 216C86 216 58 201 58 172C58 138 86 100 128 100Z" fill="url(#gold)"/>
+  <g>
+    <circle cx="128" cy="150" r="30" fill="url(#glow)"/>
+    <path d="M118 206 L122 158 L134 158 L138 206 Z" fill="#0b1226"/>
+    <path d="M119.6 188 L136.4 188 L135.4 177 L120.6 177 Z" fill="#e0483a"/>
+    <path d="M121.1 168 L134.9 168 L134.2 160 L121.8 160 Z" fill="#e0483a"/>
+    <rect x="116" y="154" width="24" height="5" rx="1.5" fill="#0b1226"/>
+    <rect x="121" y="142" width="14" height="12" rx="2" fill="#fff6c8"/>
+    <path d="M119 142 L128 133 L137 142 Z" fill="#0b1226"/>
+    <rect x="112" y="205" width="32" height="5" rx="2" fill="#0b1226"/>
+  </g>
+</g></svg>
