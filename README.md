@@ -18,3 +18,7 @@ Au Parc des Truffes, le grand concours canin est menacé : le Trophée d'Or a di
 ## Jouer
 Ouvre la page du jeu, clique sur **Nouvelle partie**. Déplacements : ZQSD / flèches · Espace : agir · Maj : courir · F : Flair · X : Lien de meute · H : aide.
 Sur Mac, tu peux l'installer comme une app : Safari → *Fichier → Ajouter au Dock*, ou Chrome → *Installer*.
+
+## Crédits
+- Modèle 3D du Golden Retriever : [« Simple Pre-Rigged Golden Retriever »](https://sketchfab.com/3d-models/simple-pre-rigged-golden-retriever-c145f814acca44c7b43636c316e7c08c) par FigDaFloof, licence [CC BY 4.0](http://creativecommons.org/licenses/by/4.0/). Animations ajoutées par programme dans le jeu.
+- Moteur 3D : [three.js](https://threejs.org) (licence MIT).

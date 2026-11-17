@@ -411,7 +411,7 @@
       </div>
       <h2>Au programme</h2>
       <p>Enquête et dialogues à choix · Flair coloré · Lien de meute · mini-jeux (rythme, timing, endurance, agilité) · événements aléatoires · une grande nuit d'orage · sauvegarde automatique sur ton ordinateur.</p>
-      <p class="foot">Pattes de Lumière · version <span id="aboutVer"></span> · Une aventure canine en 3D, jouable dans le navigateur. Tes parties restent sur cet ordinateur.</p>
+      <p class="foot">Pattes de Lumière · version <span id="aboutVer"></span> · Une aventure canine en 3D, jouable dans le navigateur. Tes parties restent sur cet ordinateur.<br>Modèle 3D du Golden Retriever : « Simple Pre-Rigged Golden Retriever » par FigDaFloof (Sketchfab), licence CC BY 4.0. Moteur 3D : three.js (MIT).</p>
     </div>
   </div>
 </div>
@@ -477,6 +477,7 @@
 
 <script src="lib/three.min.js"></script>
 <script>window.THREE || document.write('<script src="https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js"><\/script>')</script>
+<script src="lib/gltf-loader.js"></script>
 <script type="text/plain" id="mainSrc">
 'use strict';
 const $ = s => document.querySelector(s);
@@ -2279,7 +2280,7 @@ function introCine(done){
   });
 }
 
-const GAME_VERSION = '1.2';
+const GAME_VERSION = '1.3';
 $('#aboutVer').textContent = GAME_VERSION; { const lv = document.getElementById('ldVer'); if (lv) lv.textContent = GAME_VERSION; }
 $('#aboutBtn').onclick = () => { $('#about').hidden = false; $('#about .card').scrollTop = 0; };
 $('#aboutClose').onclick = () => { $('#about').hidden = true; };
@@ -4102,6 +4103,7 @@ function applyDogColor(dm, dirt){
   const hx = _tc.getHex(); if (dm._hx === hx) return; dm._hx = hx;
   const tm = dm.tm || { dk: .68, lt: 1.15 };
   dm.mats.mc.color.copy(_tc); dm.mats.dk.color.copy(_tc).multiplyScalar(tm.dk); dm.mats.lt.color.copy(_tc).multiplyScalar(tm.lt);
+  if (dm.rig) dm.rig.mat.color.setRGB(clamp(_tc.r / RIG_REF.r, .4, 1.35), clamp(_tc.g / RIG_REF.g, .4, 1.35), clamp(_tc.b / RIG_REF.b, .4, 1.35));
   if (dm.fur) for (const f of dm.fur) f.m.color.copy(f.tone === 'lt' ? dm.mats.lt.color : dm.mats.mc.color).multiplyScalar(f.k);
 }
 function setDogColor(dm, color){ dm.base.set(color); applyDogColor(dm, 0); }
@@ -4271,6 +4273,104 @@ scene.add(zoraM.root);
 const standMs = { mixte: makeDog(COLORS[0][1], true) }; scene.add(standMs.mixte.root); standMs.mixte.root.visible = false;
 let standM = standMs.mixte;
 function standFor(b){ if (!standMs[b]) { const m = makeDog(G.color, true, b, 4); scene.add(m.root); m.root.visible = false; standMs[b] = m; } return standMs[b]; }
+// ---------- Golden Retriever réaliste : modèle glTF riggé (FigDaFloof, CC BY 4.0) ----------
+// Le modèle regarde vers +Z, Y en haut, ~1,7 m de long : on le tourne vers +X et on le met à l'échelle du jeu.
+const RIG_S = 44, RIG_CZ = .85, RIG_REF = new THREE.Color('#dba54c'), _rq = new THREE.Quaternion();
+const RIG_BONES = {
+  tail: ['spine003_02', 'spine002_03', 'spine001_04', 'spine_05'], back: 'spine006_07', chest: 'spine008_09',
+  neck: 'spine009_010', neck2: 'spine010_011', head: 'spine011_012',
+  // ordre = dm.legs : avant droite, avant gauche, arrière droite, arrière gauche
+  legs: [['shoulderR_018', 'front_thighR_019', 'front_shinR_020', 'front_footR_021'], ['shoulderL_013', 'front_thighL_014', 'front_shinL_015', 'front_footL_016'],
+         ['thighR_030', 'shinR_031', 'footR_032'], ['thighL_026', 'shinL_027', 'footL_028']]
+};
+let _goldenBuf = null;
+function loadGoldenGLB(){
+  if (!THREE.GLTFLoader || location.protocol === 'file:') return Promise.reject(new Error('glTF indisponible'));
+  if (!_goldenBuf) _goldenBuf = fetch('assets/models/golden.glb').then(r => { if (!r.ok) throw new Error('golden.glb ' + r.status); return r.arrayBuffer(); });
+  return _goldenBuf.then(buf => new Promise((res, rej) => new THREE.GLTFLoader().parse(buf.slice(0), '', res, rej)));
+}
+function makeRigDog(gltf, color, withAcc){
+  const root = new THREE.Group(), body = new THREE.Group(), inner = new THREE.Group();
+  body.position.y = 27; inner.position.y = -27; root.add(body); body.add(inner);
+  const dummy = () => { const g = new THREE.Group(); inner.add(g); return g; };
+  const base = new THREE.Color(color);
+  const mats = { mc: mat(base.clone()), dk: mat(base.clone()), lt: mat(base.clone()) };
+  const model = gltf.scene, wrap = new THREE.Group();
+  wrap.rotation.y = Math.PI / 2; wrap.scale.setScalar(RIG_S); wrap.position.x = -RIG_CZ * RIG_S; wrap.add(model); inner.add(wrap);
+  let sk = null; model.traverse(o => { if (o.isSkinnedMesh) sk = o; });
+  const src = sk.material, map = src.map; if (map) { map.encoding = THREE.LinearEncoding; map.anisotropy = 4; map.needsUpdate = true; }
+  const rm = new THREE.MeshLambertMaterial({ map, side: THREE.DoubleSide }); sk.material = rm; src.dispose();
+  sk.castShadow = true; sk.receiveShadow = true; sk.frustumCulled = false;
+  // axes du modèle exprimés dans le repère de repos de chaque os
+  model.updateMatrixWorld(true);
+  const byName = {}; sk.skeleton.bones.forEach(b => byName[b.name] = b);
+  const wq = new THREE.Quaternion(), B = {};
+  const reg = n => { if (B[n] || !byName[n]) return B[n]; const b = byName[n]; b.getWorldQuaternion(wq); wq.premultiply(model.getWorldQuaternion(new THREE.Quaternion()).invert()); const iq = wq.clone().invert();
+    B[n] = { b, q0: b.quaternion.clone(), ax: { X: new THREE.Vector3(1, 0, 0).applyQuaternion(iq), Y: new THREE.Vector3(0, 1, 0).applyQuaternion(iq), Z: new THREE.Vector3(0, 0, 1).applyQuaternion(iq) } }; return B[n]; };
+  [...RIG_BONES.tail, RIG_BONES.back, RIG_BONES.chest, RIG_BONES.neck, RIG_BONES.neck2, RIG_BONES.head, ...RIG_BONES.legs.flat()].forEach(reg);
+  const tongue = SPH(2.2, mat(0xe0607a), 10, 8, false); tongue.scale.set(1.5, .35, 1.05);
+  const dm = { root, body, inner, mats, base, acc: {}, head: dummy(), legs: [dummy(), dummy(), dummy(), dummy()], tail: dummy(), tongue,
+    rig: { B, mat: rm, sk } };
+  // accessoires : construits dans le repère du jeu puis rattachés aux os (ils suivent la tête, le cou, le dos)
+  const headAcc = new THREE.Group(); headAcc.position.set(29.5, 39.6, 0); headAcc.scale.setScalar(.62); inner.add(headAcc);
+  tongue.position.set(8.6, -7.4, 0); headAcc.add(tongue);
+  if (withAcc) {
+    addDogAcc({ inner, head: headAcc, acc: dm.acc });
+    const A = dm.acc;
+    A.collar.position.set(23, 33.5, 0); A.collar.rotation.z = -.75; A.collar.scale.setScalar(.62);
+    A.bow.position.set(25.5, 28.5, 0); A.bow.scale.setScalar(.7);
+    A.bandana.position.set(25, 28, 0); A.bandana.scale.set(.72, .72, .66);
+    A.raincoat.scale.set(.98, .78, .55); A.raincoat.position.set(1, 6.5, 0);
+    A.crown.position.y = 9; A.pirate.position.y = 8.5;
+  }
+  inner.updateMatrixWorld(true); root.updateMatrixWorld(true);
+  B[RIG_BONES.head].b.attach(headAcc);
+  if (withAcc) { const A = dm.acc; for (const k of ['collar', 'bow', 'bandana']) B[RIG_BONES.neck].b.attach(A[k]); B[RIG_BONES.back].b.attach(A.raincoat); }
+  return dm;
+}
+function rigRot(r, ax, a){ if (!r || !a) return; _rq.setFromAxisAngle(r.ax[ax], a); r.b.quaternion.multiply(_rq); }
+function poseRig(dm, e, t, o){
+  const B = dm.rig.B, N = RIG_BONES, b = dm.body;
+  for (const k in B) B[k].b.quaternion.copy(B[k].q0);
+  if (o.trick) b.position.y += Math.max(0, b.rotation.z) * 3.5;
+  const sw = dm.legs.map(l => l.rotation.z);
+  const ph = (e.anim || 0) * 14, walking = e.moving && !o.sleeping && !o.digging && !o.trick;
+  const lift = walking ? [Math.max(0, Math.cos(ph)), Math.max(0, -Math.cos(ph)), Math.max(0, -Math.cos(ph)), Math.max(0, Math.cos(ph))] : [0, 0, 0, 0];
+  if (o.sleeping) {
+    // couché sur le flanc, pattes détendues
+    b.rotation.set(1.42, 0, 0); b.position.set(0, 9, 0); b.scale.set(1, 1, 1);
+    const br = Math.sin(t * 2.2) * .03; rigRot(B[N.back], 'X', br);
+    N.legs.forEach((l, i) => { const f = i < 2; rigRot(B[l[0]], 'X', f ? -.45 : -.3); rigRot(B[l[1]], 'X', f ? .25 : .5); rigRot(B[l[2]], 'X', f ? .2 : -.3); });
+    rigRot(B[N.neck], 'X', .15); rigRot(B[N.head], 'X', .25);
+    N.tail.forEach((n, k) => rigRot(B[n], 'X', -.12));
+    return;
+  }
+  N.legs.forEach((l, i) => {
+    const s = sw[i] * (o.running ? 1.05 : .85), front = i < 2, L = lift[i] * (o.running ? 1.25 : 1);
+    if (front) { rigRot(B[l[0]], 'X', -s); rigRot(B[l[2]], 'X', -L * .25); rigRot(B[l[3]], 'X', L * 1.1); }
+    else { rigRot(B[l[0]], 'X', -s); rigRot(B[l[1]], 'X', L * .55); rigRot(B[l[2]], 'X', -L * .85); }
+  });
+  const hz = dm.head.rotation.z;
+  rigRot(B[N.neck], 'X', -hz * .45); rigRot(B[N.head], 'X', -hz * .55);
+  if (!e.moving && !o.trick && !o.digging) { rigRot(B[N.head], 'Y', Math.sin(t * .55) * .22); rigRot(B[N.neck], 'X', Math.sin(t * .37) * .05); }
+  if (walking) rigRot(B[N.head], 'X', Math.sin(ph * 2) * .04);
+  rigRot(B[N.back], 'X', Math.sin(t * 2) * .015 + (o.running && walking ? Math.sin(ph) * .06 : 0));
+  const wag = dm.tail.rotation.y, up = o.happy || o.trick ? .4 : (e.moving ? .15 : -.05);
+  N.tail.forEach((n, k) => { rigRot(B[n], 'Y', wag * (.3 + .12 * k)); if (!k) rigRot(B[n], 'X', up); else rigRot(B[n], 'X', -.05 * k); });
+}
+function upgradeGolden(){
+  loadGoldenGLB().then(g => {
+    const old = dogMs.golden, nd = makeRigDog(g, old.base.getHex(), true);
+    scene.add(nd.root); nd.root.visible = dogM === old; old.root.visible = false; scene.remove(old.root);
+    dogMs.golden = nd; if (dogM === old) dogM = nd;
+    return loadGoldenGLB();
+  }).then(g => {
+    const old = standMs.golden, nd = makeRigDog(g, (G && G.color) || '#dba54c', true);
+    nd.root.visible = false; scene.add(nd.root); standMs.golden = nd;
+    if (old) { scene.remove(old.root); if (standM === old) standM = nd; }
+  }).catch(err => console.warn('Golden 3D : modèle simplifié utilisé', err));
+}
+upgradeGolden();
 function makeDeedBox(){ const g = new THREE.Group(); g.add(M3(new THREE.BoxGeometry(16, 9, 11), mat(0x6a6e78))); g.add(at(BOX(4, 4, 12, mat(0xe0b040), false), 0, 0, 0)); return g; }
 const deedCarryM = makeDeedBox(); scene.add(deedCarryM); deedCarryM.visible = false;
 const deedRenardM = makeDeedBox(); deedRenardM.position.set(14, 38, 0); renardM.root.add(deedRenardM); deedRenardM.visible = false;
@@ -4434,6 +4534,7 @@ function poseDog(dm, e, t, o){
     L[0].rotation.z = L[3].rotation.z = sw; L[1].rotation.z = L[2].rotation.z = -sw;
     b.position.y = 27 + Math.abs(Math.sin(e.anim * 14)) * 1.8; if (o.running) b.rotation.z = -.08;
   } else b.scale.y = 1 + Math.sin(t * 2) * .012;
+  if (dm.rig) poseRig(dm, e, t, o);
 }
 function poseHuman(hm, e, t, armUp){
   hm.root.position.set(e.x, 0, e.y); hm.root.rotation.y = -(e.hd || 0);
